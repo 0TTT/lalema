@@ -1,4 +1,5 @@
-import { Capacitor } from '@capacitor/core'
+import { registerPlugin, Capacitor } from '@capacitor/core'
+import type { PluginListenerHandle } from '@capacitor/core'
 
 export interface NativeTimerPlugin {
   start: (opts: { startAt: number }) => Promise<void>
@@ -7,8 +8,17 @@ export interface NativeTimerPlugin {
   addListener: (
     event: 'finished',
     cb: (data: { startAt: number }) => void
-  ) => Promise<{ remove: () => void }>
+  ) => Promise<PluginListenerHandle>
 }
+
+const NativeTimer = registerPlugin<NativeTimerPlugin>('NativeTimer', {
+  web: () => ({
+    start: async () => {},
+    stop: async () => {},
+    requestPermissions: async () => {},
+    addListener: async () => ({ remove: async () => {} }),
+  }),
+})
 
 export function isNativeAndroid(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
@@ -16,7 +26,5 @@ export function isNativeAndroid(): boolean {
 
 export function nativeTimer(): NativeTimerPlugin | null {
   if (!isNativeAndroid()) return null
-  const p = (Capacitor as unknown as { Plugins?: { NativeTimer?: NativeTimerPlugin } }).Plugins
-    ?.NativeTimer
-  return p ?? null
+  return NativeTimer
 }
