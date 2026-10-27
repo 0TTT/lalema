@@ -152,6 +152,17 @@ export function CalendarPage() {
         </div>
       )}
 
+      <div className="section-title" style={{ marginTop: 18 }}>
+        全部记录 · {records.length} 条
+      </div>
+      {records.length === 0 ? (
+        <div style={{ fontSize: 13, color: 'var(--ink-soft)', padding: '0 4px' }}>
+          还没有任何记录，点「今天」开始第一条吧
+        </div>
+      ) : (
+        records.map((r) => <RecordRow key={r.id} rec={r} onEdit={openEditRec} />)
+      )}
+
       <RecordForm
         open={formOpen}
         onClose={() => setFormOpen(false)}

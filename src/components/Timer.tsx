@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatClock } from '../lib/date'
+import { nativeTimer } from '../lib/native'
 
 export interface TimerResult {
   startAt: number
@@ -13,6 +14,34 @@ export function Timer({ onFinish }: { onFinish: (r: TimerResult) => void }) {
   const [elapsed, setElapsed] = useState(0)
   const startRef = useRef<number>(0)
   const baseRef = useRef<number>(0)
+  const onFinishRef = useRef(onFinish)
+  onFinishRef.current = onFinish
+
+  // 监听通知栏「结束」按钮的回调（仅安卓原生环境）
+  useEffect(() => {
+    const nt = nativeTimer()
+    if (!nt) return
+    let disposed = false
+    let removeHandle: (() => void) | null = null
+    nt.addListener('finished', (data) => {
+      const end = Date.now()
+      const startAt = data.startAt
+      const durationSec = Math.max(1, Math.round((end - startAt) / 1000))
+      setRunning(false)
+      setPaused(false)
+      setElapsed(0)
+      onFinishRef.current({ startAt, endAt: end, durationSec })
+    })
+      .then((h) => {
+        if (disposed) h.remove()
+        else removeHandle = () => h.remove()
+      })
+      .catch(() => {})
+    return () => {
+      disposed = true
+      removeHandle?.()
+    }
+  }, [])
 
   useEffect(() => {
     if (!running || paused) return
@@ -23,11 +52,17 @@ export function Timer({ onFinish }: { onFinish: (r: TimerResult) => void }) {
   }, [running, paused])
 
   function start() {
-    startRef.current = Date.now()
+    const now = Date.now()
+    startRef.current = now
     baseRef.current = 0
     setElapsed(0)
     setPaused(false)
     setRunning(true)
+    const nt = nativeTimer()
+    if (nt) {
+      nt.requestPermissions().catch(() => {})
+      nt.start({ startAt: now }).catch(() => {})
+    }
   }
 
   function togglePause() {
@@ -46,12 +81,18 @@ export function Timer({ onFinish }: { onFinish: (r: TimerResult) => void }) {
       : baseRef.current + (Date.now() - startRef.current) / 1000
     const end = Date.now()
     const start = end - Math.round(dur * 1000)
+    nativeTimer()
+      ?.stop()
+      .catch(() => {})
     setRunning(false)
     setPaused(false)
     onFinish({ startAt: start, endAt: end, durationSec: Math.max(1, Math.round(dur)) })
   }
 
   function cancel() {
+    nativeTimer()
+      ?.stop()
+      .catch(() => {})
     setRunning(false)
     setPaused(false)
     setElapsed(0)

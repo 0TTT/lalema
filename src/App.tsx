@@ -2,18 +2,17 @@ import { useState, useEffect } from 'react'
 import { Today } from './pages/Today'
 import { CalendarPage } from './pages/CalendarPage'
 import { StatsPage } from './pages/StatsPage'
-import { HistoryPage } from './pages/HistoryPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { Sheet, Banner, ToastHost } from './components/ui'
 import { getMeta, setMeta } from './lib/db'
+import { isNativeAndroid } from './lib/native'
 
-type Tab = 'today' | 'calendar' | 'stats' | 'history' | 'settings'
+type Tab = 'today' | 'calendar' | 'stats' | 'settings'
 
 const TABS: { key: Tab; ic: string; label: string }[] = [
   { key: 'today', ic: '🚽', label: '今天' },
   { key: 'calendar', ic: '📅', label: '日历' },
   { key: 'stats', ic: '📊', label: '统计' },
-  { key: 'history', ic: '📜', label: '历史' },
   { key: 'settings', ic: '👤', label: '我的' },
 ]
 
@@ -21,7 +20,6 @@ const TAB_TITLE: Record<Tab, string> = {
   today: '今天',
   calendar: '日历',
   stats: '统计',
-  history: '历史',
   settings: '我的',
 }
 
@@ -35,6 +33,15 @@ export default function App() {
     })
   }, [])
 
+  // 安卓原生：状态栏不覆盖内容，避免标题顶到状态栏
+  useEffect(() => {
+    if (!isNativeAndroid()) return
+    import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
+      StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
+    })
+  }, [])
+
   function accept() {
     setMeta('disclaimer', true)
     setShowDisc(false)
@@ -44,7 +51,6 @@ export default function App() {
     today: Today,
     calendar: CalendarPage,
     stats: StatsPage,
-    history: HistoryPage,
     settings: SettingsPage,
   }[tab]
 
