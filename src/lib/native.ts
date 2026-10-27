@@ -4,6 +4,8 @@ import type { PluginListenerHandle } from '@capacitor/core'
 export interface NativeTimerPlugin {
   start: (opts: { startAt: number }) => Promise<void>
   stop: () => Promise<void>
+  pause: (opts: { elapsedMs: number }) => Promise<void>
+  resume: (opts: { anchor: number }) => Promise<void>
   requestPermissions: () => Promise<void>
   addListener: (
     event: 'finished',
@@ -15,6 +17,8 @@ const NativeTimer = registerPlugin<NativeTimerPlugin>('NativeTimer', {
   web: () => ({
     start: async () => {},
     stop: async () => {},
+    pause: async () => {},
+    resume: async () => {},
     requestPermissions: async () => {},
     addListener: async () => ({ remove: async () => {} }),
   }),

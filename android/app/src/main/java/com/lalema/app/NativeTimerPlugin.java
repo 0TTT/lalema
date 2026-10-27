@@ -37,6 +37,24 @@ public class NativeTimerPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void pause(PluginCall call) {
+        long elapsedMs = call.getLong("elapsedMs", 0);
+        Intent i = new Intent(getContext(), TimerService.class).setAction(TimerService.ACTION_PAUSE);
+        i.putExtra("elapsedMs", elapsedMs);
+        getContext().startService(i);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void resume(PluginCall call) {
+        long anchor = call.getLong("anchor", System.currentTimeMillis());
+        Intent i = new Intent(getContext(), TimerService.class).setAction(TimerService.ACTION_RESUME);
+        i.putExtra("anchor", anchor);
+        getContext().startService(i);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void requestPermissions(PluginCall call) {
         if (Build.VERSION.SDK_INT >= 33) {
             if (getContext().checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)

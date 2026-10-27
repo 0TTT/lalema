@@ -75,7 +75,7 @@ export function SettingsPage() {
         className="card"
         style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.8 }}
       >
-        「拉了吗」v1.1.1 · 开源 MIT 协议
+        「拉了吗」v1.2.0 · 开源 MIT 协议
         <br />
         本地优先的如厕记录与肠道分析工具。
         <br />

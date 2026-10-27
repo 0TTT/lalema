@@ -8,30 +8,28 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 /**
- * 如厕计时前台服务：进入后台后仍在通知栏实时显示计时，并可通过「结束」按钮结束。
+ * 如厕计时前台服务。
+ *
+ * 上流体云的关键：使用 Chronometer 机制（setUsesChronometer + setWhen + setShowWhen），
+ * 计时跳动由系统时钟（SystemUI）自动重绘，严禁每秒 notify()。
  */
 public class TimerService extends Service {
     public static final String ACTION_STOP = "com.lalema.app.action.STOP";
+    public static final String ACTION_PAUSE = "com.lalema.app.action.PAUSE";
+    public static final String ACTION_RESUME = "com.lalema.app.action.RESUME";
+
     private static final String CHANNEL_ID = "timer_channel";
     private static final int NOTIF_ID = 1001;
 
     private long startAt = System.currentTimeMillis();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable tick = new Runnable() {
-        @Override
-        public void run() {
-            updateNotification();
-            handler.postDelayed(this, 1000);
-        }
-    };
+    private boolean paused = false;
+    private long pausedElapsedMs = 0;
 
     @Override
     public void onCreate() {
@@ -46,9 +44,13 @@ public class TimerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && ACTION_STOP.equals(intent.getAction())) {
+        if (intent == null) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        String action = intent.getAction();
+        if (ACTION_STOP.equals(action)) {
             long s = startAt;
-            handler.removeCallbacks(tick);
             stopForeground(true);
             stopSelf();
             if (NativeTimerPlugin.instance != null) {
@@ -56,18 +58,27 @@ public class TimerService extends Service {
             }
             return START_NOT_STICKY;
         }
-        if (intent != null) {
-            startAt = intent.getLongExtra("startAt", System.currentTimeMillis());
+        if (ACTION_PAUSE.equals(action)) {
+            paused = true;
+            pausedElapsedMs = intent.getLongExtra("elapsedMs", 0);
+            notifyNow();
+            return START_NOT_STICKY;
         }
+        if (ACTION_RESUME.equals(action)) {
+            paused = false;
+            startAt = intent.getLongExtra("anchor", System.currentTimeMillis());
+            notifyNow();
+            return START_NOT_STICKY;
+        }
+        // 默认：开始计时
+        paused = false;
+        startAt = intent.getLongExtra("startAt", System.currentTimeMillis());
         startForegroundCompat();
-        updateNotification();
-        handler.removeCallbacks(tick);
-        handler.postDelayed(tick, 1000);
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     private void startForegroundCompat() {
-        Notification n = buildNotification("00:00");
+        Notification n = buildNotification();
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
@@ -83,7 +94,7 @@ public class TimerService extends Service {
         return String.format("%02d:%02d", m, s);
     }
 
-    private Notification buildNotification(String text) {
+    private Notification buildNotification() {
         Intent stopIntent = new Intent(this, TimerService.class).setAction(ACTION_STOP);
         PendingIntent stopPi = PendingIntent.getService(
             this, 1, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -94,26 +105,33 @@ public class TimerService extends Service {
             this, 2, openIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("正在记录…")
-            .setContentText("计时 " + text)
-            .setContentIntent(openPi)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .addAction(0, "结束", stopPi)
-            .build();
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setContentIntent(openPi)
+            .addAction(0, "结束", stopPi);
+
+        if (paused) {
+            // 暂停：冻结 Chronometer，显示定格时间
+            b.setContentText("已暂停 · " + format(pausedElapsedMs / 1000));
+            b.setUsesChronometer(false);
+            b.setShowWhen(false);
+        } else {
+            // 运行：交给系统 Chronometer 自动计时，流体云据此识别并上浮
+            b.setContentText("上厕所中");
+            b.setUsesChronometer(true);
+            b.setChronometerCountDown(false);
+            b.setWhen(startAt);
+            b.setShowWhen(true);
+        }
+        return b.build();
     }
 
-    private void updateNotification() {
-        long elapsed = Math.max(0, (System.currentTimeMillis() - startAt) / 1000);
-        NotificationManagerCompat.from(this).notify(NOTIF_ID, buildNotification(format(elapsed)));
-    }
-
-    @Override
-    public void onDestroy() {
-        handler.removeCallbacks(tick);
-        super.onDestroy();
+    private void notifyNow() {
+        NotificationManagerCompat.from(this).notify(NOTIF_ID, buildNotification());
     }
 
     @Override

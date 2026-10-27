@@ -66,12 +66,17 @@ export function Timer({ onFinish }: { onFinish: (r: TimerResult) => void }) {
   }
 
   function togglePause() {
+    const nt = nativeTimer()
     if (paused) {
-      startRef.current = Date.now()
+      const now = Date.now()
+      startRef.current = now
       setPaused(false)
+      const anchor = now - Math.round(baseRef.current * 1000)
+      nt?.resume({ anchor }).catch(() => {})
     } else {
       baseRef.current += (Date.now() - startRef.current) / 1000
       setPaused(true)
+      nt?.pause({ elapsedMs: Math.round(baseRef.current * 1000) }).catch(() => {})
     }
   }
 
