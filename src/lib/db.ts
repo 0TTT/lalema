@@ -11,6 +11,8 @@ function open(): Promise<IDBDatabase> {
   if (dbp) return dbp
   dbp = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
+    // 防止极端情况下 IndexedDB 打开永久卡住
+    const timer = setTimeout(() => reject(new Error('IndexedDB 打开超时')), 8000)
     req.onupgradeneeded = () => {
       const db = req.result
       if (!db.objectStoreNames.contains(STORE)) {
@@ -22,8 +24,18 @@ function open(): Promise<IDBDatabase> {
         db.createObjectStore(META, { keyPath: 'key' })
       }
     }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    req.onsuccess = () => {
+      clearTimeout(timer)
+      resolve(req.result)
+    }
+    req.onerror = () => {
+      clearTimeout(timer)
+      reject(req.error)
+    }
+    req.onblocked = () => {
+      clearTimeout(timer)
+      reject(new Error('IndexedDB 被阻塞'))
+    }
   })
   return dbp
 }

@@ -40,8 +40,12 @@ android/build/
 android/**/*.keystore
 android/**/release/
 
-# 项目数据（个人记录，不入库）
-.workbuddy/
+# 构建产物 / 缓存
+release/
+*.tsbuildinfo
+apk-release/
+*.apk
+*.zip
 
-# 工作区数据（个人记录，不入库）
+# 项目数据（个人记录，不入库）
 .workbuddy/
