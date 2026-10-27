@@ -38,7 +38,7 @@ public class NativeTimerPlugin extends Plugin {
 
     @PluginMethod
     public void pause(PluginCall call) {
-        long elapsedMs = call.getLong("elapsedMs", 0);
+        long elapsedMs = call.getLong("elapsedMs", 0L);
         Intent i = new Intent(getContext(), TimerService.class).setAction(TimerService.ACTION_PAUSE);
         i.putExtra("elapsedMs", elapsedMs);
         getContext().startService(i);
