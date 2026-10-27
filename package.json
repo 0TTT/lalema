@@ -1,7 +1,7 @@
 {
   "name": "lalema",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "「拉了吗」—— 本地优先的如厕记录与肠道健康分析工具",
   "license": "MIT",

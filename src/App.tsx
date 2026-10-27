@@ -47,13 +47,6 @@ export default function App() {
     setShowDisc(false)
   }
 
-  const Page = {
-    today: Today,
-    calendar: CalendarPage,
-    stats: StatsPage,
-    settings: SettingsPage,
-  }[tab]
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -61,7 +54,19 @@ export default function App() {
         <span className="sub">{TAB_TITLE[tab]}</span>
       </header>
 
-      <Page />
+      {/* 所有页面常驻挂载，用 display 切换，保证计时器等状态不因切 tab 丢失 */}
+      <div style={{ display: tab === 'today' ? 'contents' : 'none' }}>
+        <Today />
+      </div>
+      <div style={{ display: tab === 'calendar' ? 'contents' : 'none' }}>
+        <CalendarPage />
+      </div>
+      <div style={{ display: tab === 'stats' ? 'contents' : 'none' }}>
+        <StatsPage />
+      </div>
+      <div style={{ display: tab === 'settings' ? 'contents' : 'none' }}>
+        <SettingsPage />
+      </div>
 
       <nav className="bottom-nav">
         {TABS.map((t) => (

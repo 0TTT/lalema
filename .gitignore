@@ -38,6 +38,7 @@ android/.gradle/
 android/app/build/
 android/build/
 android/**/*.keystore
+!android/keystore/debug.keystore
 android/**/release/
 
 # 构建产物 / 缓存
